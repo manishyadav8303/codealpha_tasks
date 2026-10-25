@@ -1,0 +1,1 @@
+{"name":"codealpha-url-shortener","version":"1.0.0","description":"CodeAlpha URL Shortener API","main":"server.js","scripts":{"start":"node server.js","dev":"node server.js"},"dependencies":{"better-sqlite3":"^11.8.1","express":"^4.21.2"}}

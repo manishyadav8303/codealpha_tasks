@@ -1,0 +1,13 @@
+const express = require('express');
+const Database = require('better-sqlite3');
+const crypto = require('crypto');
+const path = require('path');
+const app = express(); const db = new Database(path.join(__dirname, 'urls.db'));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+db.exec(`CREATE TABLE IF NOT EXISTS urls (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, original_url TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)`);
+app.get('/', (_req,res)=>res.json({project:'CodeAlpha URL Shortener', endpoints:{'POST /api/shorten':'{ "url": "https://example.com" }','GET /:code':'Redirects to original URL','GET /api/urls':'List saved URLs'}}));
+app.post('/api/shorten',(req,res)=>{const {url}=req.body||{}; if(!url) return res.status(400).json({error:'url is required'}); let parsed; try{parsed=new URL(url)}catch{return res.status(400).json({error:'Please provide a valid URL'})} if(!['http:','https:'].includes(parsed.protocol)) return res.status(400).json({error:'Only HTTP/HTTPS URLs are allowed'}); let code; do{code=crypto.randomBytes(4).toString('base64url').slice(0,6)}while(db.prepare('SELECT 1 FROM urls WHERE code=?').get(code)); db.prepare('INSERT INTO urls(code,original_url) VALUES(?,?)').run(code,parsed.toString()); res.status(201).json({code,originalUrl:parsed.toString(),shortUrl:`${req.protocol}://${req.get('host')}/${code}`});});
+app.get('/api/urls',(_req,res)=>res.json(db.prepare('SELECT code, original_url AS originalUrl, created_at AS createdAt FROM urls ORDER BY id DESC').all()));
+app.get('/:code',(req,res)=>{const row=db.prepare('SELECT original_url FROM urls WHERE code=?').get(req.params.code); if(!row)return res.status(404).json({error:'Short URL not found'});res.redirect(302,row.original_url)});
+const PORT=process.env.PORT||3001; app.listen(PORT,()=>console.log(`URL Shortener running at http://localhost:${PORT}`));
